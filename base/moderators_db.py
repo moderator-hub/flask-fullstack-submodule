@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from passlib.handlers.pbkdf2 import pbkdf2_sha256
-from sqlalchemy import Column, ForeignKey, select
+from sqlalchemy import Column, ForeignKey, select, delete
+from sqlalchemy.sql.functions import count
 from sqlalchemy.sql.sqltypes import Integer, String
 
 from common import Base, PydanticModel, UserRole
@@ -61,6 +62,10 @@ class Moderator(Base, UserRole):
         stmt = select(Permission).join(ModPerm).filter(ModPerm.moderator_id == self.id)
         return session.get_paginated(stmt, offset, limit)
 
+    def check_permissions(self, session, permission_ids: list[int]) -> bool:
+        stmt = select(count(ModPerm)).filter_by(moderator_id=self.id).filter(ModPerm.permission_id.in_(permission_ids))
+        return session.get_first(stmt) == len(permission_ids)
+
 
 class BlockedModToken(Base):  # TODO replace with full session control
     __tablename__ = "blocked-mod-tokens"
@@ -93,3 +98,7 @@ class ModPerm(Base):
     def delete_by_ids(cls, session, moderator_id: int, permission_id: int) -> bool:
         mod_perm = cls.find_by_ids(session, moderator_id, permission_id)
         return mod_perm is not None and mod_perm.delete(session) is None
+
+    @classmethod
+    def bundle_delete(cls, session, moderator_id: int, permission_ids: list[int]) -> None:
+        session.execute(delete(cls).where(cls.moderator_id == moderator_id, cls.permission_id.in_(permission_ids)))
