@@ -17,6 +17,10 @@ class Permission(Base):
     def find_by_name(cls, session, name: str) -> Permission | None:
         return session.get_first(select(cls).filter_by(name=name))
 
+    @classmethod
+    def search(cls, session, offset: int, limit: int, search: str | None = None) -> list[Permission]:
+        return session.get_paginated(select(cls), offset, limit)
+
     @PydanticModel.include_columns(id, name)
     class IndexModel(PydanticModel):
         pass
@@ -38,12 +42,20 @@ class Moderator(Base, UserRole):
     password = Column(String(100), nullable=False)
 
     @classmethod
+    def register(cls, session, username: str, password: str):
+        return Moderator.create(session, username=username, password=Moderator.generate_hash(password))
+
+    @classmethod
     def find_by_id(cls, session, entry_id: int) -> Moderator | None:
         return session.get_first(select(cls).filter_by(id=entry_id))
 
     @classmethod
     def find_by_name(cls, session, username: str):
         return session.get_first(select(cls).filter_by(username=username))
+
+    @classmethod
+    def search(cls, session, offset: int, limit: int, search: str | None = None) -> list[Moderator]:
+        return session.get_paginated(select(cls), offset, limit)
 
     def find_permissions(self, session, offset: int, limit: int) -> list[Permission]:
         stmt = select(Permission).join(ModPerm).filter(ModPerm.moderator_id == self.id)
