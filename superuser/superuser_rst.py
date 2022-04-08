@@ -11,27 +11,30 @@ manage_mods = permission_index.add_permission("manage_mods")
 superuser_namespace: RestXNamespace = RestXNamespace("mub-superuser", sessionmaker=sessionmaker, path="/mub/")
 permission_model = superuser_namespace.model(model=Permission.IndexModel)
 
+search_counter_parser = counter_parser.copy()
+search_counter_parser.add_argument("search", required=False)
+
 
 @superuser_namespace.route("/permissions/")
 class PermissionIndex(Resource):
     @permission_index.require_permission(superuser_namespace, manage_mods, use_moderator=False)
-    @superuser_namespace.argument_parser(counter_parser)
+    @superuser_namespace.argument_parser(search_counter_parser)
     @superuser_namespace.lister(100, Permission.IndexModel)
-    def get(self, session, start: int, finish: int):
-        return Permission.search(session, start, finish - start)
+    def get(self, session, start: int, finish: int, search: str | None = None):
+        return Permission.search(session, start, finish - start, search)
 
 
 @superuser_namespace.route("/moderators/")
 class ModeratorIndex(Resource):
+    @permission_index.require_permission(superuser_namespace, manage_mods, use_moderator=False)
+    @superuser_namespace.argument_parser(search_counter_parser)
+    @superuser_namespace.lister(100, Moderator.IndexModel)
+    def get(self, session, start: int, finish: int, search: str | None = None):
+        return Moderator.search(session, start, finish - start, search)
+
     parser = RequestParser()
     parser.add_argument("username", required=True)
     parser.add_argument("password", required=True)
-
-    @permission_index.require_permission(superuser_namespace, manage_mods, use_moderator=False)
-    @superuser_namespace.argument_parser(counter_parser)
-    @superuser_namespace.lister(100, Moderator.IndexModel)
-    def get(self, session, start: int, finish: int):
-        return Moderator.search(session, start, finish - start)
 
     @permission_index.require_permission(superuser_namespace, manage_mods, use_moderator=False)
     @superuser_namespace.argument_parser(parser)

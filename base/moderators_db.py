@@ -20,7 +20,8 @@ class Permission(Base):
 
     @classmethod
     def search(cls, session, offset: int, limit: int, search: str | None = None) -> list[Permission]:
-        return session.get_paginated(select(cls), offset, limit)
+        stmt = select(cls) if search is None else select(cls).filter(cls.name.like(f"%{search}%"))
+        return session.get_paginated(stmt.order_by(cls.name), offset, limit)
 
     @PydanticModel.include_columns(id, name)
     class IndexModel(PydanticModel):
@@ -56,7 +57,8 @@ class Moderator(Base, UserRole):
 
     @classmethod
     def search(cls, session, offset: int, limit: int, search: str | None = None) -> list[Moderator]:
-        return session.get_paginated(select(cls), offset, limit)
+        stmt = select(cls) if search is None else select(cls).filter(cls.username.like(f"%{search}%"))
+        return session.get_paginated(stmt.order_by(cls.username), offset, limit)
 
     def find_permissions(self, session, offset: int, limit: int) -> list[Permission]:
         stmt = select(Permission).join(ModPerm).filter(ModPerm.moderator_id == self.id)
