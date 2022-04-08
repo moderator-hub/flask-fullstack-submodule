@@ -4,7 +4,7 @@ from passlib.handlers.pbkdf2 import pbkdf2_sha256
 from sqlalchemy import Column, ForeignKey, select
 from sqlalchemy.sql.sqltypes import Integer, String
 
-from common import Base
+from common import Base, PydanticModel, UserRole
 
 
 class Permission(Base):
@@ -17,8 +17,12 @@ class Permission(Base):
     def find_by_name(cls, session, name: str) -> Permission | None:
         return session.get_first(select(cls).filter_by(name=name))
 
+    @PydanticModel.include_columns(id, name)
+    class IndexModel(PydanticModel):
+        pass
 
-class Moderator(Base):
+
+class Moderator(Base, UserRole):
     __tablename__ = "moderators"
 
     @staticmethod
@@ -34,12 +38,23 @@ class Moderator(Base):
     password = Column(String(100), nullable=False)
 
     @classmethod
+    def find_by_id(cls, session, entry_id: int) -> Moderator | None:
+        return session.get_first(select(cls).filter_by(id=entry_id))
+
+    @classmethod
     def find_by_name(cls, session, username: str):
         return session.get_first(select(cls).filter_by(username=username))
 
     def find_permissions(self, session, offset: int, limit: int) -> list[Permission]:
         stmt = select(Permission).join(ModPerm).filter(ModPerm.moderator_id == self.id)
         return session.get_paginated(stmt, offset, limit)
+
+
+class BlockedModToken(Base):  # TODO replace with full session control
+    __tablename__ = "blocked-mod-tokens"
+
+    id = Column(Integer, primary_key=True)
+    jti = Column(String(36), nullable=False)
 
 
 class ModPerm(Base):
