@@ -6,8 +6,6 @@ from flask_restx.reqparse import RequestParser
 from common import RestXNamespace, counter_parser, sessionmaker
 from ..base import permission_index, Moderator, Permission, ModPerm
 
-read_mods = permission_index.add_permission("read_mods")
-create_mods = permission_index.add_permission("create_mods")
 manage_mods = permission_index.add_permission("manage_mods")
 
 superuser_namespace: RestXNamespace = RestXNamespace("mub-superuser", sessionmaker=sessionmaker, path="/mub/")
@@ -29,13 +27,13 @@ class ModeratorIndex(Resource):
     parser.add_argument("username", required=True)
     parser.add_argument("password", required=True)
 
-    @permission_index.require_permission(superuser_namespace, read_mods, use_moderator=False)
+    @permission_index.require_permission(superuser_namespace, manage_mods, use_moderator=False)
     @superuser_namespace.argument_parser(counter_parser)
     @superuser_namespace.lister(100, Moderator.IndexModel)
     def get(self, session, start: int, finish: int):
         return Moderator.search(session, start, finish - start)
 
-    @permission_index.require_permission(superuser_namespace, create_mods, use_moderator=False)
+    @permission_index.require_permission(superuser_namespace, manage_mods, use_moderator=False)
     @superuser_namespace.argument_parser(parser)
     def post(self, session, username: str, password: str):
         Moderator.register(session, username, password)
