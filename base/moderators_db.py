@@ -1,0 +1,68 @@
+from __future__ import annotations
+
+from passlib.handlers.pbkdf2 import pbkdf2_sha256
+from sqlalchemy import Column, ForeignKey, select
+from sqlalchemy.sql.sqltypes import Integer, String
+
+from common import Base
+
+
+class Permission(Base):
+    __tablename__ = "permissions"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(100), nullable=False, unique=True)
+
+    @classmethod
+    def find_by_name(cls, session, name: str) -> Permission | None:
+        return session.get_first(select(cls).filter_by(name=name))
+
+
+class Moderator(Base):
+    __tablename__ = "moderators"
+
+    @staticmethod
+    def generate_hash(password) -> str:
+        return pbkdf2_sha256.hash(password)
+
+    @staticmethod
+    def verify_hash(password, hashed) -> bool:
+        return pbkdf2_sha256.verify(password, hashed)
+
+    id = Column(Integer, primary_key=True)
+    username = Column(String(100), nullable=False, unique=True)
+    password = Column(String(100), nullable=False)
+
+    @classmethod
+    def find_by_name(cls, session, username: str):
+        return session.get_first(select(cls).filter_by(username=username))
+
+    def find_permissions(self, session, offset: int, limit: int) -> list[Permission]:
+        stmt = select(Permission).join(ModPerm).filter(ModPerm.moderator_id == self.id)
+        return session.get_paginated(stmt, offset, limit)
+
+
+class ModPerm(Base):
+    __tablename__ = "modperms"
+
+    moderator_id = Column(Integer, ForeignKey("moderators.id"), primary_key=True)
+    permission_id = Column(Integer, ForeignKey("permissions.id"), primary_key=True)
+
+    @classmethod
+    def find_by_moderator(cls, session, moderator_id: int, offset: int, limit: int) -> list[ModPerm]:
+        return session.get_paginated(select(cls).filter_by(moderator_id=moderator_id), offset, limit)
+
+    @classmethod
+    def find_by_ids(cls, session, moderator_id: int, permission_id: int) -> ModPerm | None:
+        return session.get_first(select(cls).filter_by(moderator_id=moderator_id, permission_id=permission_id))
+
+    @classmethod
+    def create_unique(cls, session, moderator_id: int, permission_id: int) -> ModPerm | None:
+        if cls.find_by_ids(session, moderator_id, permission_id) is not None:
+            return None
+        return cls.create(session, moderator_id=moderator_id, permission_id=permission_id)
+
+    @classmethod
+    def delete_by_ids(cls, session, moderator_id: int, permission_id: int) -> bool:
+        mod_perm = cls.find_by_ids(session, moderator_id, permission_id)
+        return mod_perm is not None and mod_perm.delete(session) is None
