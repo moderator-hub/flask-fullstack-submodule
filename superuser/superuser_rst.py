@@ -49,12 +49,16 @@ class ModeratorManager(Resource):
     parser.add_argument("append_perms", type=int, required=False, action="append")
     parser.add_argument("remove_perms", type=int, required=False, action="append")
 
+    @superuser_namespace.doc_abort(400, "Can't edit superuser's permissions")
     @superuser_namespace.doc_abort(403, "Insufficient permissions")
     @permission_index.require_permission(superuser_namespace, manage_mods)
     @superuser_namespace.database_searcher(Moderator, result_field_name="target")
     @superuser_namespace.argument_parser(parser)
     def post(self, session, moderator: Moderator, target: Moderator, username: str | None,
              append_perms: list[int] | None, remove_perms: list[int] | None):  # TODO replace mode?
+        if target.superuser:
+            superuser_namespace.abort(400, "Can't edit superuser's permissions")
+
         if username is not None:
             target.username = username
             # TODO expire all current sessions
@@ -71,9 +75,12 @@ class ModeratorManager(Resource):
         ModPerm.bundle_delete(session, target.id, remove_perms)
 
     @superuser_namespace.doc_abort(400, "Target is the source")
+    @superuser_namespace.doc_abort(403, "Can't delete a superuser via web api")
     @permission_index.require_permission(superuser_namespace, manage_mods)
     @superuser_namespace.database_searcher(Moderator, result_field_name="target")
     def delete(self, session, moderator: Moderator, target: Moderator):
         if moderator.id == target.id:
             superuser_namespace.abort(400, "Target is the source")
+        if target.superuser:
+            superuser_namespace.abort(403, "Can't delete a superuser via web api")
         target.delete(session)

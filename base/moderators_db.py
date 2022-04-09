@@ -3,7 +3,7 @@ from __future__ import annotations
 from passlib.handlers.pbkdf2 import pbkdf2_sha256
 from sqlalchemy import Column, ForeignKey, select, delete
 from sqlalchemy.sql.functions import count
-from sqlalchemy.sql.sqltypes import Integer, String
+from sqlalchemy.sql.sqltypes import Integer, String, Boolean
 
 from common import Base, PydanticModel, UserRole
 
@@ -42,6 +42,11 @@ class Moderator(Base, UserRole):
     id = Column(Integer, primary_key=True)
     username = Column(String(100), nullable=False, unique=True)
     password = Column(String(100), nullable=False)
+    superuser = Column(Boolean, nullable=False, default=False)
+
+    @PydanticModel.include_columns(id, username, superuser)
+    class IndexModel(PydanticModel):
+        pass
 
     @classmethod
     def register(cls, session, username: str, password: str):

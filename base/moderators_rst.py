@@ -41,9 +41,11 @@ class SignInResource(Resource):
 
 
 @mub_base_namespace.route("/permissions/")
-class SignInResource(Resource):  # TODO support searching
+class PermissionsResource(Resource):
     @mub_base_namespace.jwt_authorizer(Moderator)
     @mub_base_namespace.argument_parser(counter_parser)
     @mub_base_namespace.lister(100, Permission.IndexModel)
     def get(self, session, moderator, start: int, finish: int):
+        if moderator.superuser:
+            return Permission.search(session, start, finish - start, search)
         return moderator.find_permissions(session, start, finish - start)
