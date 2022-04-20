@@ -23,9 +23,7 @@ class Permission(Base):
         stmt = select(cls) if search is None else select(cls).filter(cls.name.like(f"%{search}%"))
         return session.get_paginated(stmt.order_by(cls.name), offset, limit)
 
-    @PydanticModel.include_columns(id, name)
-    class IndexModel(PydanticModel):
-        pass
+    IndexModel = PydanticModel.column_model(id, name)
 
 
 class Moderator(Base, UserRole):
@@ -44,9 +42,7 @@ class Moderator(Base, UserRole):
     password = Column(String(100), nullable=False)
     superuser = Column(Boolean, nullable=False, default=False)
 
-    @PydanticModel.include_columns(id, username, superuser)
-    class IndexModel(PydanticModel):
-        pass
+    IndexModel = PydanticModel.column_model(id, username, superuser)
 
     @classmethod
     def register(cls, session, username: str, password: str):
