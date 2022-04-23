@@ -23,6 +23,10 @@ class Permission(Base):
         stmt = select(cls) if search is None else select(cls).filter(cls.name.like(f"%{search}%"))
         return session.get_paginated(stmt.order_by(cls.name), offset, limit)
 
+    @classmethod
+    def get_all(cls, session):
+        return session.get_all(select(cls))
+
     IndexModel = PydanticModel.column_model(id, name)
 
 
@@ -61,9 +65,10 @@ class Moderator(Base, UserRole):
         stmt = select(cls) if search is None else select(cls).filter(cls.username.like(f"%{search}%"))
         return session.get_paginated(stmt.order_by(cls.username), offset, limit)
 
-    def find_permissions(self, session, offset: int, limit: int) -> list[Permission]:
-        stmt = select(Permission).join(ModPerm).filter(ModPerm.moderator_id == self.id)
-        return session.get_paginated(stmt, offset, limit)
+    def get_permissions(self, session) -> list[Permission]:
+        if self.superuser:
+            return Permission.get_all(session)
+        return session.get_all(select(Permission).join(ModPerm).filter(ModPerm.moderator_id == self.id))
 
     def check_permissions(self, session, permission_ids: list[int]) -> bool:
         stmt = select(count(ModPerm)).filter_by(moderator_id=self.id).filter(ModPerm.permission_id.in_(permission_ids))

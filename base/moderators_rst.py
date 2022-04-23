@@ -16,18 +16,20 @@ class SignInResource(Resource):
     parser.add_argument("username", type=str, required=True)
     parser.add_argument("password", type=str, required=True)
 
+    @mub_base_namespace.doc_aborts((200, "Moderator does not exist"), (200, "Wrong password"))
     @mub_base_namespace.with_begin
     @mub_base_namespace.argument_parser(parser)
+    @mub_base_namespace.marshal_list_with(Permission.IndexModel)
     def post(self, session, username: str, password: str):
         moderator = Moderator.find_by_name(session, username)
         if moderator is None:
-            return "Moderator does not exist"
+            mub_base_namespace.abort(200, "Moderator does not exist")
 
         if Moderator.verify_hash(password, moderator.password):
-            response = jsonify("Success")
+            response = jsonify(moderator.get_permissions(session))
             set_access_cookies(response, create_access_token(identity=moderator.id))
             return response
-        return "Wrong password"
+        mub_base_namespace.abort(200, "Wrong password")
 
 
 @mub_base_namespace.route("/sign-out/")
@@ -43,9 +45,7 @@ class SignInResource(Resource):
 @mub_base_namespace.route("/permissions/")
 class PermissionsResource(Resource):
     @mub_base_namespace.jwt_authorizer(Moderator)
-    @mub_base_namespace.argument_parser(counter_parser)
-    @mub_base_namespace.lister(100, Permission.IndexModel)
-    def get(self, session, moderator, start: int, finish: int):
-        if moderator.superuser:
-            return Permission.search(session, start, finish - start, search)
-        return moderator.find_permissions(session, start, finish - start)
+    @mub_base_namespace.argument_parser(counter_parser)  # TODO pagination?
+    @mub_base_namespace.marshal_list_with(Permission.IndexModel)
+    def get(self, session, moderator):
+        return moderator.get_permissions(session)

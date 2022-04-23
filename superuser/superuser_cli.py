@@ -27,9 +27,8 @@ def permission_cli_command():
 
 
 @permission_cli_command()
-@option("-p", "--page", prompt=True, type=int)
-def list_permissions(session, page: int):
-    permissions = Permission.search(session, page * CLI_PAGE_SIZE, CLI_PAGE_SIZE)
+def list_permissions(session):
+    permissions = Permission.get_all(session)
     if len(permissions) == 0:
         return echo("<empty>")
 
@@ -125,16 +124,12 @@ def remove_permission(session, username: str, permission: str):
 
 @permission_cli_command()
 @option("-u", "--username", prompt=True)
-@option("-p", "--page", prompt=True, type=int)
-def list_mod_perms(session, username: str, page: int):
+def list_mod_perms(session, username: str):
     moderator = Moderator.find_by_name(session, username)
     if moderator is None:
         return echo("ERROR: Moderator does not exist")
 
-    if moderator.superuser:
-        permissions = Permission.search(session, page * CLI_PAGE_SIZE, CLI_PAGE_SIZE)
-    else:
-        permissions = moderator.find_permissions(session, page * CLI_PAGE_SIZE, CLI_PAGE_SIZE)
+    permissions = moderator.get_permissions(session)
 
     if len(permissions) == 0:
         return echo("<empty>")
