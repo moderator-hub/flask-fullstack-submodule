@@ -32,6 +32,7 @@ class PermissionIndex:
                 permission = Permission.create(session, name=name)
             self.permission_dict[name] = permission
         self.permission_list = list(self.permissions)
+        self.initialized = True
         # TODO check if database has more permissions, than self does
 
     def require_permission(self, ns: RestXNamespace, permission: PermissionInt,

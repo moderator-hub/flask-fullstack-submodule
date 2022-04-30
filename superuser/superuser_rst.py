@@ -6,7 +6,7 @@ from flask_restx.reqparse import RequestParser
 from common import RestXNamespace, counter_parser, sessionmaker
 from ..base import permission_index, Moderator, Permission, ModPerm
 
-manage_mods = permission_index.add_permission("manage_mods")
+manage_mods = permission_index.add_permission("manage mods")
 
 superuser_namespace: RestXNamespace = RestXNamespace("mub-superuser", sessionmaker=sessionmaker, path="/mub/")
 permission_model = superuser_namespace.model(model=Permission.IndexModel)
@@ -18,10 +18,9 @@ search_counter_parser.add_argument("search", required=False)
 @superuser_namespace.route("/permissions/")
 class PermissionIndex(Resource):
     @permission_index.require_permission(superuser_namespace, manage_mods, use_moderator=False)
-    @superuser_namespace.argument_parser(search_counter_parser)
-    @superuser_namespace.lister(100, Permission.IndexModel)
-    def get(self, session, start: int, finish: int, search: str | None = None):
-        return Permission.search(session, start, finish - start, search)
+    @superuser_namespace.marshal_list_with(Permission.IndexModel)
+    def get(self, session):
+        return Permission.get_all(session)
 
 
 @superuser_namespace.route("/moderators/")

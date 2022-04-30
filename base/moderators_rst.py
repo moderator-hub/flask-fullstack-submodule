@@ -3,11 +3,10 @@ from flask_jwt_extended import set_access_cookies, create_access_token, unset_jw
 from flask_restx import Resource
 from flask_restx.reqparse import RequestParser
 
-from common import RestXNamespace, counter_parser, sessionmaker
+from common import RestXNamespace, sessionmaker, ResponseDoc
 from .moderators_db import Moderator, Permission, BlockedModToken
 
 mub_base_namespace = RestXNamespace("mub-base", sessionmaker=sessionmaker, path="/mub/")
-permission_model = mub_base_namespace.model(model=Permission.IndexModel)
 
 
 @mub_base_namespace.route("/sign-in/")
@@ -16,20 +15,21 @@ class SignInResource(Resource):
     parser.add_argument("username", type=str, required=True)
     parser.add_argument("password", type=str, required=True)
 
-    @mub_base_namespace.doc_aborts((200, "Moderator does not exist"), (200, "Wrong password"))
+    @mub_base_namespace.doc_responses(ResponseDoc(description="Success with user's permissions"))  # TODO redo
+    @mub_base_namespace.doc_aborts(("200 ", "Moderator does not exist"), (" 200", "Wrong password"))
     @mub_base_namespace.with_begin
     @mub_base_namespace.argument_parser(parser)
-    @mub_base_namespace.marshal_list_with(Permission.IndexModel)
     def post(self, session, username: str, password: str):
         moderator = Moderator.find_by_name(session, username)
         if moderator is None:
-            mub_base_namespace.abort(200, "Moderator does not exist")
+            return "Moderator does not exist"
 
         if Moderator.verify_hash(password, moderator.password):
-            response = jsonify(moderator.get_permissions(session))
+            response = moderator.get_permissions(session)
+            response = jsonify(mub_base_namespace.marshal(response, Permission.IndexModel))
             set_access_cookies(response, create_access_token(identity=moderator.id))
             return response
-        mub_base_namespace.abort(200, "Wrong password")
+        return "Wrong password"
 
 
 @mub_base_namespace.route("/sign-out/")
@@ -42,10 +42,9 @@ class SignInResource(Resource):
         return response
 
 
-@mub_base_namespace.route("/permissions/")
+@mub_base_namespace.route("/my-permissions/")
 class PermissionsResource(Resource):
-    @mub_base_namespace.jwt_authorizer(Moderator)
-    @mub_base_namespace.argument_parser(counter_parser)  # TODO pagination?
+    @mub_base_namespace.jwt_authorizer(Moderator)  # TODO pagination?
     @mub_base_namespace.marshal_list_with(Permission.IndexModel)
     def get(self, session, moderator):
         return moderator.get_permissions(session)

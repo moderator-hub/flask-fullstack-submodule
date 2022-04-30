@@ -13,8 +13,8 @@ mub_cli_blueprint = Blueprint("mub", __name__)
 
 def permission_cli_command():
     def permission_cli_command_wrapper(function):
-        @wraps(function)
         @mub_cli_blueprint.cli.command(function.__name__.replace("_", "-"))
+        @wraps(function)
         @sessionmaker.with_begin
         def permission_cli_command_inner(*args, **kwargs):
             if not permission_index.initialized:
@@ -88,7 +88,12 @@ def remove_moderator(session, username: str):
 @permission_cli_command()
 @option("-p", "--page", prompt=True, type=int)
 def list_moderators(session, page: int):
-    for moderator in Moderator.search(session, page * CLI_PAGE_SIZE, CLI_PAGE_SIZE):
+    moderators = Moderator.search(session, page * CLI_PAGE_SIZE, CLI_PAGE_SIZE)
+
+    if len(moderators) == 0:
+        return echo("<empty>")
+
+    for moderator in moderators:
         echo(f"{moderator.id:4}: {moderator.username}" + (" SUPERUSER" if moderator.superuser else ""))
 
 
