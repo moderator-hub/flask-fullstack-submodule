@@ -14,7 +14,7 @@ class PermissionInt:
 class PermissionIndex:
     permissions: set[str]
     permission_list: list[str] = None
-    permission_dict: dict[str, Permission] = None
+    permission_dict: dict[str, int] = None
     initialized: bool = False
 
     def add_permission(self, name: str):
@@ -30,7 +30,7 @@ class PermissionIndex:
             permission = Permission.find_by_name(session, name)
             if permission is None:
                 permission = Permission.create(session, name=name)
-            self.permission_dict[name] = permission
+            self.permission_dict[name] = permission.id
         self.permission_list = list(self.permissions)
         self.initialized = True
         # TODO check if database has more permissions, than self does
