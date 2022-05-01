@@ -5,7 +5,7 @@ from sqlalchemy import Column, ForeignKey, select, delete
 from sqlalchemy.sql.functions import count
 from sqlalchemy.sql.sqltypes import Integer, String, Boolean
 
-from common import Base, PydanticModel, UserRole
+from common import Base, PydanticModel, Identifiable, UserRole
 
 
 class Permission(Base):
@@ -30,7 +30,7 @@ class Permission(Base):
     IndexModel = PydanticModel.column_model(id, name)
 
 
-class Moderator(Base, UserRole):
+class Moderator(Base, Identifiable, UserRole):
     __tablename__ = "moderators"
 
     @staticmethod
@@ -57,6 +57,10 @@ class Moderator(Base, UserRole):
         return session.get_first(select(cls).filter_by(id=entry_id))
 
     @classmethod
+    def find_by_identity(cls, session, identity: int) -> Moderator | None:
+        return cls.find_by_id(session, identity)
+
+    @classmethod
     def find_by_name(cls, session, username: str):
         return session.get_first(select(cls).filter_by(username=username))
 
@@ -73,6 +77,9 @@ class Moderator(Base, UserRole):
     def check_permissions(self, session, permission_ids: list[int]) -> bool:
         stmt = select(count(ModPerm)).filter_by(moderator_id=self.id).filter(ModPerm.permission_id.in_(permission_ids))
         return session.get_first(stmt) == len(permission_ids)
+
+    def get_identity(self):
+        return self.id
 
 
 class BlockedModToken(Base):  # TODO replace with full session control

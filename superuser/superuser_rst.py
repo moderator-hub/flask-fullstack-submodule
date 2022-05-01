@@ -3,12 +3,12 @@ from __future__ import annotations
 from flask_restx import Resource
 from flask_restx.reqparse import RequestParser
 
-from common import RestXNamespace, counter_parser, sessionmaker
-from ..base import permission_index, Moderator, Permission, ModPerm
+from common import counter_parser, sessionmaker
+from ..base import permission_index, Moderator, Permission, ModPerm, MUBNamespace
 
 manage_mods = permission_index.add_permission("manage mods")
 
-superuser_namespace: RestXNamespace = RestXNamespace("mub-superuser", sessionmaker=sessionmaker, path="/mub/")
+superuser_namespace = MUBNamespace("superuser", sessionmaker=sessionmaker, path="")
 permission_model = superuser_namespace.model(model=Permission.IndexModel)
 
 search_counter_parser = counter_parser.copy()

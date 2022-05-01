@@ -1,12 +1,13 @@
 from flask import jsonify
-from flask_jwt_extended import set_access_cookies, create_access_token, unset_jwt_cookies, get_jwt
+from flask_jwt_extended import get_jwt
 from flask_restx import Resource
 from flask_restx.reqparse import RequestParser
 
-from common import RestXNamespace, sessionmaker, ResponseDoc
+from common import sessionmaker, ResponseDoc
+from ._mub_restx import MUBNamespace
 from .moderators_db import Moderator, Permission, BlockedModToken
 
-mub_base_namespace = RestXNamespace("mub-base", sessionmaker=sessionmaker, path="/mub/")
+mub_base_namespace = MUBNamespace("base", sessionmaker=sessionmaker, path="")
 
 
 @mub_base_namespace.route("/sign-in/")
@@ -17,6 +18,7 @@ class SignInResource(Resource):
 
     @mub_base_namespace.doc_responses(ResponseDoc(description="Success with user's permissions"))  # TODO redo
     @mub_base_namespace.doc_aborts(("200 ", "Moderator does not exist"), (" 200", "Wrong password"))
+    @mub_base_namespace.with_optional_jwt()
     @mub_base_namespace.with_begin
     @mub_base_namespace.argument_parser(parser)
     def post(self, session, username: str, password: str):
@@ -27,7 +29,7 @@ class SignInResource(Resource):
         if Moderator.verify_hash(password, moderator.password):
             response = moderator.get_permissions(session)
             response = jsonify(mub_base_namespace.marshal(response, Permission.IndexModel))
-            set_access_cookies(response, create_access_token(identity=moderator.id))
+            mub_base_namespace.add_authorization(response, moderator, "mub")
             return response
         return "Wrong password"
 
@@ -38,7 +40,7 @@ class SignInResource(Resource):
     def post(self, session):
         response = jsonify(True)
         BlockedModToken.create(session, jti=get_jwt()["jti"])
-        unset_jwt_cookies(response)
+        mub_base_namespace.remove_authorization(response, "mub")
         return response
 
 
