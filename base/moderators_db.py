@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from passlib.handlers.pbkdf2 import pbkdf2_sha256
 from sqlalchemy import Column, ForeignKey, select, delete
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql.functions import count
 from sqlalchemy.sql.sqltypes import Integer, String, Boolean
 
@@ -13,6 +14,8 @@ class Permission(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(100), nullable=False, unique=True)
+
+    IndexModel = PydanticModel.column_model(id, name)
 
     @classmethod
     def find_by_id(cls, session, entity_id: int) -> Permission | None:
@@ -31,8 +34,6 @@ class Permission(Base):
     def get_all(cls, session):
         return session.get_all(select(cls))
 
-    IndexModel = PydanticModel.column_model(id, name)
-
 
 class Moderator(Base, Identifiable, UserRole):
     __tablename__ = "mub-moderators"
@@ -50,7 +51,15 @@ class Moderator(Base, Identifiable, UserRole):
     password = Column(String(100), nullable=False)
     superuser = Column(Boolean, nullable=False, default=False)
 
-    IndexModel = PydanticModel.column_model(id, username, superuser)
+    permissions = relationship("ModPerm")
+
+    class IndexModel(PydanticModel.column_model(id, username, superuser)):
+        permissions: list[Permission.IndexModel]
+
+        @classmethod
+        def callback_convert(cls, callback, orm_object: Moderator, **context) -> None:
+            callback(permissions=[Permission.IndexModel.convert(mod_perm.permission)
+                                  for mod_perm in orm_object.permissions])
 
     @classmethod
     def register(cls, session, username: str, password: str):
@@ -98,6 +107,7 @@ class ModPerm(Base):
 
     moderator_id = Column(Integer, ForeignKey("mub-moderators.id"), primary_key=True)
     permission_id = Column(Integer, ForeignKey("mub-permissions.id"), primary_key=True)
+    permission = relationship("Permission", foreign_keys=[permission_id])
 
     @classmethod
     def find_by_moderator(cls, session, moderator_id: int, offset: int, limit: int) -> list[ModPerm]:
