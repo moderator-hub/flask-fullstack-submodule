@@ -9,7 +9,7 @@ from common import Base, PydanticModel, Identifiable, UserRole
 
 
 class Permission(Base):
-    __tablename__ = "permissions"
+    __tablename__ = "mub-permissions"
 
     id = Column(Integer, primary_key=True)
     name = Column(String(100), nullable=False, unique=True)
@@ -31,7 +31,7 @@ class Permission(Base):
 
 
 class Moderator(Base, Identifiable, UserRole):
-    __tablename__ = "moderators"
+    __tablename__ = "mub-moderators"
 
     @staticmethod
     def generate_hash(password) -> str:
@@ -90,10 +90,10 @@ class BlockedModToken(Base):  # TODO replace with full session control
 
 
 class ModPerm(Base):
-    __tablename__ = "modperms"
+    __tablename__ = "mub-modperms"
 
-    moderator_id = Column(Integer, ForeignKey("moderators.id"), primary_key=True)
-    permission_id = Column(Integer, ForeignKey("permissions.id"), primary_key=True)
+    moderator_id = Column(Integer, ForeignKey("mub-moderators.id"), primary_key=True)
+    permission_id = Column(Integer, ForeignKey("mub-permissions.id"), primary_key=True)
 
     @classmethod
     def find_by_moderator(cls, session, moderator_id: int, offset: int, limit: int) -> list[ModPerm]:
