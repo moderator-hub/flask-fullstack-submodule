@@ -15,6 +15,10 @@ class Permission(Base):
     name = Column(String(100), nullable=False, unique=True)
 
     @classmethod
+    def find_by_id(cls, session, entity_id: int) -> Permission | None:
+        return session.get_first(select(cls).filter_by(id=entity_id))
+
+    @classmethod
     def find_by_name(cls, session, name: str) -> Permission | None:
         return session.get_first(select(cls).filter_by(name=name))
 
