@@ -43,7 +43,8 @@ class PermissionIndex:
             def require_permission_inner(*args, **kwargs):
                 session = get_or_pop(kwargs, "session", use_session)
                 moderator = get_or_pop(kwargs, "moderator", use_moderator)
-                ModPerm.find_by_ids(session, moderator.id, self.permission_dict[permission.name])
+                if ModPerm.find_by_ids(session, moderator.id, self.permission_dict[permission.name]) is None:
+                    ns.abort(403, "Not sufficient permissions")
                 return function(*args, **kwargs)
 
             return require_permission_inner
