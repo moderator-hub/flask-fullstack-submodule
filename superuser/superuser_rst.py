@@ -25,20 +25,35 @@ class PermissionIndex(Resource):
 
 @superuser_namespace.route("/moderators/")
 class ModeratorIndex(Resource):
-    @permission_index.require_permission(superuser_namespace, manage_mods, use_moderator=False)
+    @permission_index.require_permission(superuser_namespace, manage_mods)
     @superuser_namespace.argument_parser(search_counter_parser)
     @superuser_namespace.lister(100, Moderator.IndexModel)
-    def get(self, session, start: int, finish: int, search: str | None = None):
-        return Moderator.search(session, start, finish - start, search)
+    def get(self, session, moderator: Moderator, start: int, finish: int, search: str | None = None):
+        return Moderator.search(session, start, finish - start, search, moderator.id)
 
     parser = RequestParser()
     parser.add_argument("username", required=True)
     parser.add_argument("password", required=True)
+    parser.add_argument("append-perms", type=int, required=False, dest="append_perms", action="append")
 
-    @permission_index.require_permission(superuser_namespace, manage_mods, use_moderator=False)
+    @superuser_namespace.doc_abort(400, "Moderator with is username already exists")
+    @permission_index.require_permission(superuser_namespace, manage_mods)
     @superuser_namespace.argument_parser(parser)
-    def post(self, session, username: str, password: str):
-        Moderator.register(session, username, password)
+    @superuser_namespace.marshal_with(Moderator.IndexModel)
+    def post(self, session, moderator: Moderator, username: str, password: str, append_perms: list[int]):
+        append_perms = append_perms or []
+        for permission_id in append_perms:
+            if Permission.find_by_id(session, permission_id) is None:
+                superuser_namespace.abort(404, f"Permission {permission_id} does not exit")
+            if ModPerm.find_by_ids(session, moderator.id, permission_id) is None:
+                superuser_namespace.abort(403, f"You can't grant or remove permission #{permission_id}")
+
+        if Moderator.find_by_name(session, username) is not None:
+            superuser_namespace.abort(400, "Moderator with is username already exists")
+        target = Moderator.register(session, username, password)
+        for permission_id in append_perms:
+            ModPerm.create_unique(session, target.id, permission_id)
+        return target
 
 
 @superuser_namespace.route("/moderators/<int:moderator_id>/")
@@ -46,15 +61,15 @@ class ModeratorManager(Resource):
     parser = RequestParser()
     parser.add_argument("username", required=False)
     parser.add_argument("password", required=False)
-    parser.add_argument("append_perms", type=int, required=False, action="append")
-    parser.add_argument("remove_perms", type=int, required=False, action="append")
+    parser.add_argument("append-perms", type=int, required=False, dest="append_perms", action="append")
+    parser.add_argument("remove-perms", type=int, required=False, dest="remove_perms", action="append")
 
     @superuser_namespace.doc_abort(400, "Target is the source")
     @superuser_namespace.doc_abort(400, "Can't edit superuser's permissions")
     @superuser_namespace.doc_abort(403, "Insufficient permissions")
     @superuser_namespace.doc_abort(404, "Permission not found")
     @permission_index.require_permission(superuser_namespace, manage_mods)
-    @superuser_namespace.database_searcher(Moderator, result_field_name="target")
+    @superuser_namespace.database_searcher(Moderator, result_field_name="target", use_session=True)
     @superuser_namespace.argument_parser(parser)
     def post(self, session, moderator: Moderator, target: Moderator, username: str | None, password: str | None,
              append_perms: list[int] | None, remove_perms: list[int] | None):  # TODO replace mode?
@@ -85,7 +100,7 @@ class ModeratorManager(Resource):
     @superuser_namespace.doc_abort(400, "Target is the source")
     @superuser_namespace.doc_abort(403, "Can't delete a superuser via web api")
     @permission_index.require_permission(superuser_namespace, manage_mods)
-    @superuser_namespace.database_searcher(Moderator, result_field_name="target")
+    @superuser_namespace.database_searcher(Moderator, result_field_name="target", use_session=True)
     def delete(self, session, moderator: Moderator, target: Moderator):
         if moderator.id == target.id:
             superuser_namespace.abort(400, "Target is the source")

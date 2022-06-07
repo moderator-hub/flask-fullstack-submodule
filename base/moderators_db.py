@@ -51,7 +51,7 @@ class Moderator(Base, Identifiable, UserRole):
     password = Column(String(100), nullable=False)
     superuser = Column(Boolean, nullable=False, default=False)
 
-    permissions = relationship("ModPerm")
+    permissions = relationship("ModPerm", cascade="all, delete")
 
     class IndexModel(PydanticModel.column_model(id, username, superuser)):
         permissions: list[Permission.IndexModel]
@@ -78,8 +78,12 @@ class Moderator(Base, Identifiable, UserRole):
         return session.get_first(select(cls).filter_by(username=username))
 
     @classmethod
-    def search(cls, session, offset: int, limit: int, search: str | None = None) -> list[Moderator]:
-        stmt = select(cls) if search is None else select(cls).filter(cls.username.like(f"%{search}%"))
+    def search(cls, session, offset: int, limit: int, search: str | None = None, exclude: int = None) -> list[Moderator]:
+        stmt = select(cls)
+        if exclude is not None:
+            stmt = stmt.filter(cls.id != exclude)
+        if search is not None:
+            stmt = stmt.filter(cls.username.like(f"%{search}%"))
         return session.get_paginated(stmt.order_by(cls.username), offset, limit)
 
     def get_permissions(self, session) -> list[Permission]:
