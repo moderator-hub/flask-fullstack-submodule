@@ -5,8 +5,8 @@ from flask_restx import Resource
 from flask_restx.reqparse import RequestParser
 
 from common import sessionmaker
-from ._mub_restx import MUBNamespace
-from .moderators_db import Moderator, BlockedModToken, InterfaceMode
+from .sessions_db import BlockedModToken
+from ..base import MUBNamespace, Moderator, InterfaceMode
 
 mub_base_namespace = MUBNamespace("base", sessionmaker=sessionmaker, path="")
 
