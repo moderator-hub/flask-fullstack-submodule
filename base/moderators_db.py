@@ -4,9 +4,9 @@ from passlib.handlers.pbkdf2 import pbkdf2_sha256
 from sqlalchemy import Column, ForeignKey, select, delete
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql.functions import count
-from sqlalchemy.sql.sqltypes import Integer, String, Boolean
+from sqlalchemy.sql.sqltypes import Integer, String, Boolean, Enum
 
-from common import Base, PydanticModel, Identifiable, UserRole
+from common import Base, PydanticModel, Identifiable, UserRole, TypeEnum
 
 
 class Permission(Base):
@@ -35,6 +35,11 @@ class Permission(Base):
         return session.get_all(select(cls))
 
 
+class InterfaceMode(TypeEnum):
+    DARK = 0
+    LIGHT = 1
+
+
 class Moderator(Base, Identifiable, UserRole):
     __tablename__ = "mub-moderators"
 
@@ -51,15 +56,21 @@ class Moderator(Base, Identifiable, UserRole):
     password = Column(String(100), nullable=False)
     superuser = Column(Boolean, nullable=False, default=False)
 
+    mode = Column(Enum(InterfaceMode), nullable=False, default=InterfaceMode.DARK)
+
     permissions = relationship("ModPerm", cascade="all, delete")
 
-    class IndexModel(PydanticModel.column_model(id, username, superuser)):
+    @PydanticModel.include_context("session")
+    class PermissionsModel(PydanticModel.column_model(id)):
         permissions: list[Permission.IndexModel]
 
         @classmethod
-        def callback_convert(cls, callback, orm_object: Moderator, **context) -> None:
-            callback(permissions=[Permission.IndexModel.convert(mod_perm.permission)
-                                  for mod_perm in orm_object.permissions])
+        def callback_convert(cls, callback, orm_object: Moderator, session=None, **context) -> None:
+            callback(permissions=[Permission.IndexModel.convert(permission)
+                                  for permission in orm_object.get_permissions(session)])
+
+    IndexModel = PermissionsModel.column_model(username, superuser)
+    SelfModel = PermissionsModel.column_model(mode)
 
     @classmethod
     def register(cls, session, username: str, password: str):
