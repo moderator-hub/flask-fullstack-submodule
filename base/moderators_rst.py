@@ -50,17 +50,14 @@ class PermissionsResource(Resource):
 
     parser = RequestParser()
     parser.add_argument("mode", required=False)
-    parser.add_argument("locale", required=False)
 
     @mub_base_namespace.doc_abort(400, "Wrong interface mode")
     @mub_base_namespace.jwt_authorizer(Moderator, use_session=False)
     @mub_base_namespace.argument_parser(parser)
-    def post(self, moderator, mode: str | None, locale: str | None):
+    def post(self, moderator, mode: str | None):
         if mode is not None:
             mode = InterfaceMode.from_string(mode)
             if mode is None:
                 mub_base_namespace.abort(400, "Wrong interface mode")
             moderator.mode = mode
-        if locale is not None:
-            moderator.locale = locale
         return True

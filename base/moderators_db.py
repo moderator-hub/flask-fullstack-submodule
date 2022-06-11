@@ -57,7 +57,6 @@ class Moderator(Base, Identifiable, UserRole):
     superuser = Column(Boolean, nullable=False, default=False)
 
     mode = Column(Enum(InterfaceMode), nullable=False, default=InterfaceMode.DARK)
-    locale = Column(String(10), nullable=False, default="en")
 
     permissions = relationship("ModPerm", cascade="all, delete")
 
@@ -71,7 +70,7 @@ class Moderator(Base, Identifiable, UserRole):
                                   for permission in orm_object.get_permissions(session)])
 
     IndexModel = PermissionsModel.column_model(username, superuser)
-    SelfModel = PermissionsModel.column_model(mode, locale)
+    SelfModel = PermissionsModel.column_model(mode)
 
     @classmethod
     def register(cls, session, username: str, password: str):
