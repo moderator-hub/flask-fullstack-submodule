@@ -33,7 +33,7 @@ class SignInResource(Resource):
 
 
 @mub_base_namespace.route("/sign-out/")
-class SignInResource(Resource):
+class SignOutResource(Resource):
     @mub_base_namespace.with_begin
     @mub_base_namespace.removes_authorization(auth_name="mub")
     def post(self, session):
