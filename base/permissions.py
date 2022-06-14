@@ -36,14 +36,18 @@ class PermissionIndex:
         # TODO check if database has more permissions, than self does
 
     def require_permission(self, ns: RestXNamespace, permission: PermissionInt,
-                           use_session: bool = True, use_moderator: bool = True):
+                           use_session: bool = True, use_moderator: bool = True, optional: bool = False):
         def require_permission_wrapper(function):
+            @ns.doc_abort(403, "Not sufficient permissions")
             @wraps(function)
             @ns.jwt_authorizer(Moderator)
             def require_permission_inner(*args, **kwargs):
                 session = get_or_pop(kwargs, "session", use_session)
                 moderator = get_or_pop(kwargs, "moderator", use_moderator)
-                if ModPerm.find_by_ids(session, moderator.id, self.permission_dict[permission.name]) is None:
+                declined = ModPerm.find_by_ids(session, moderator.id, self.permission_dict[permission.name]) is None
+                if optional:
+                    kwargs["permitted"] = not declined
+                elif declined:
                     ns.abort(403, "Not sufficient permissions")
                 return function(*args, **kwargs)
 
@@ -52,16 +56,21 @@ class PermissionIndex:
         return require_permission_wrapper
 
     def require_permissions(self, ns: RestXNamespace, *permissions: PermissionInt,
-                            use_session: bool = True, use_moderator: bool = True):
+                            use_session: bool = True, use_moderator: bool = True, optional: bool = False):
         def require_permissions_wrapper(function):
+            @ns.doc_abort(403, "Not sufficient permissions")
             @wraps(function)
             @ns.jwt_authorizer(Moderator)
             def require_permissions_inner(*args, **kwargs):
                 session = get_or_pop(kwargs, "session", use_session)
                 moderator = get_or_pop(kwargs, "moderator", use_moderator)
-                if moderator.check_permissions(session, [self.permission_dict[perm.name] for perm in permissions]):
-                    return function(*args, **kwargs)
-                ns.abort(403, "Access denied")
+                perms = [self.permission_dict[perm.name] for perm in permissions]
+                permitted = moderator.check_permissions(session, perms)
+                if optional:
+                    kwargs["permitted"] = permitted
+                elif not permitted:
+                    ns.abort(403, "Not sufficient permissions")
+                return function(*args, **kwargs)
 
             return require_permissions_inner
 
