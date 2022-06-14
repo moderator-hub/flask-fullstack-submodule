@@ -8,20 +8,20 @@ from common import sessionmaker
 from ._mub_restx import MUBNamespace
 from .moderators_db import Moderator, BlockedModToken, InterfaceMode
 
-mub_base_namespace = MUBNamespace("base", sessionmaker=sessionmaker, path="")
+namespace = MUBNamespace("base", sessionmaker=sessionmaker, path="")
 
 
-@mub_base_namespace.route("/sign-in/")
+@namespace.route("/sign-in/")
 class SignInResource(Resource):
     parser: RequestParser = RequestParser()
     parser.add_argument("username", type=str, required=True)
     parser.add_argument("password", type=str, required=True)
 
-    @mub_base_namespace.doc_aborts(("200 ", "Moderator does not exist"), (" 200", "Wrong password"))
-    @mub_base_namespace.with_optional_jwt()
-    @mub_base_namespace.with_begin
-    @mub_base_namespace.argument_parser(parser)
-    @mub_base_namespace.marshal_with_authorization(Moderator.SelfModel, auth_name="mub")
+    @namespace.doc_aborts(("200 ", "Moderator does not exist"), (" 200", "Wrong password"))
+    @namespace.with_optional_jwt()
+    @namespace.with_begin
+    @namespace.argument_parser(parser)
+    @namespace.marshal_with_authorization(Moderator.SelfModel, auth_name="mub")
     def post(self, session, username: str, password: str):
         moderator = Moderator.find_by_name(session, username)
         if moderator is None:
@@ -32,32 +32,32 @@ class SignInResource(Resource):
         return "Wrong password"
 
 
-@mub_base_namespace.route("/sign-out/")
+@namespace.route("/sign-out/")
 class SignOutResource(Resource):
-    @mub_base_namespace.with_begin
-    @mub_base_namespace.removes_authorization(auth_name="mub")
+    @namespace.with_begin
+    @namespace.removes_authorization(auth_name="mub")
     def post(self, session):
         BlockedModToken.create(session, jti=get_jwt()["jti"])
         return True
 
 
-@mub_base_namespace.route("/my-settings/")
+@namespace.route("/my-settings/")
 class PermissionsResource(Resource):
-    @mub_base_namespace.jwt_authorizer(Moderator)  # TODO pagination for permissions?
-    @mub_base_namespace.marshal_with(Moderator.SelfModel)
+    @namespace.jwt_authorizer(Moderator)  # TODO pagination for permissions?
+    @namespace.marshal_with(Moderator.SelfModel)
     def get(self, moderator, **_):
         return moderator
 
     parser = RequestParser()
     parser.add_argument("mode", required=False)
 
-    @mub_base_namespace.doc_abort(400, "Wrong interface mode")
-    @mub_base_namespace.jwt_authorizer(Moderator, use_session=False)
-    @mub_base_namespace.argument_parser(parser)
+    @namespace.doc_abort(400, "Wrong interface mode")
+    @namespace.jwt_authorizer(Moderator, use_session=False)
+    @namespace.argument_parser(parser)
     def post(self, moderator, mode: str | None):
         if mode is not None:
             mode = InterfaceMode.from_string(mode)
             if mode is None:
-                mub_base_namespace.abort(400, "Wrong interface mode")
+                namespace.abort(400, "Wrong interface mode")
             moderator.mode = mode
         return True
