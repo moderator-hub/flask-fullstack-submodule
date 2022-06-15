@@ -44,7 +44,9 @@ class PermissionIndex:
             def require_permission_inner(*args, **kwargs):
                 session = get_or_pop(kwargs, "session", use_session)
                 moderator = get_or_pop(kwargs, "moderator", use_moderator)
-                declined = ModPerm.find_by_ids(session, moderator.id, self.permission_dict[permission.name]) is None
+                declined = not moderator.superuser and ModPerm.find_by_ids(
+                    session, moderator.id, self.permission_dict[permission.name]) is None
+
                 if optional:
                     kwargs["permitted"] = not declined
                 elif declined:
@@ -64,8 +66,9 @@ class PermissionIndex:
             def require_permissions_inner(*args, **kwargs):
                 session = get_or_pop(kwargs, "session", use_session)
                 moderator = get_or_pop(kwargs, "moderator", use_moderator)
-                perms = [self.permission_dict[perm.name] for perm in permissions]
-                permitted = moderator.check_permissions(session, perms)
+                perms = (self.permission_dict[perm.name] for perm in permissions)
+                permitted = moderator.superuser or moderator.check_permissions(session, list(perms))
+
                 if optional:
                     kwargs["permitted"] = permitted
                 elif not permitted:
