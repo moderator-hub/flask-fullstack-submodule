@@ -44,7 +44,7 @@ class ModeratorIndex(Resource):
         for permission_id in append_perms:
             if Permission.find_by_id(session, permission_id) is None:
                 namespace.abort(404, f"Permission {permission_id} does not exit")
-            if ModPerm.find_by_ids(session, moderator.id, permission_id) is None:
+            if not moderator.superuser and ModPerm.find_by_ids(session, moderator.id, permission_id) is None:
                 namespace.abort(403, f"You can't grant or remove permission #{permission_id}")
 
         if Moderator.find_by_name(session, username) is not None:
@@ -89,7 +89,7 @@ class ModeratorManager(Resource):
         for permission_id in (append_perms + remove_perms):
             if Permission.find_by_id(session, permission_id) is None:
                 namespace.abort(404, f"Permission {permission_id} does not exit")
-            if ModPerm.find_by_ids(session, moderator.id, permission_id) is None:
+            if not moderator.superuser and ModPerm.find_by_ids(session, moderator.id, permission_id) is None:
                 namespace.abort(403, f"You can't grant or remove permission #{permission_id}")
 
         for permission_id in append_perms:
