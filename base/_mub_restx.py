@@ -1,9 +1,9 @@
 from typing import Type
 
-from __lib__.flask_fullstack import RestXNamespace, UserRole
+from __lib__.flask_fullstack import ResourceController, UserRole
 
 
-class MUBNamespace(RestXNamespace):
+class MUBController(ResourceController):
     def __init__(self, name: str, *, sessionmaker, no_prefix: bool = False, path: str = None, **kwargs):
         if no_prefix:
             super().__init__(name, path=path, sessionmaker=sessionmaker, **kwargs)
