@@ -7,6 +7,8 @@ class MUBController(ResourceController):
     def __init__(self, name: str, *, sessionmaker, no_prefix: bool = False, path: str = None, **kwargs):
         if no_prefix:
             super().__init__(name, path=path, sessionmaker=sessionmaker, **kwargs)
+        elif path is None:
+            super().__init__("mub-" + name, path=f"/mub/{name}/", sessionmaker=sessionmaker, **kwargs)
         else:
             super().__init__("mub-" + name, path="/mub/" + path.lstrip("/"), sessionmaker=sessionmaker, **kwargs)
 
