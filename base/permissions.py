@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from functools import wraps
 
-from common import sessionmaker, RestXNamespace, get_or_pop
+from common import sessionmaker, ResourceController, get_or_pop
 from .moderators_db import Permission, Moderator, ModPerm
 
 
@@ -35,7 +35,7 @@ class PermissionIndex:
         self.initialized = True
         # TODO check if database has more permissions, than self does
 
-    def require_permission(self, ns: RestXNamespace, permission: PermissionInt,
+    def require_permission(self, ns: ResourceController, permission: PermissionInt,
                            use_session: bool = True, use_moderator: bool = True, optional: bool = False):
         def require_permission_wrapper(function):
             @ns.doc_abort(403, "Not sufficient permissions")
@@ -57,7 +57,7 @@ class PermissionIndex:
 
         return require_permission_wrapper
 
-    def require_permissions(self, ns: RestXNamespace, *permissions: PermissionInt,
+    def require_permissions(self, ns: ResourceController, *permissions: PermissionInt,
                             use_session: bool = True, use_moderator: bool = True, optional: bool = False):
         def require_permissions_wrapper(function):
             @ns.doc_abort(403, "Not sufficient permissions")

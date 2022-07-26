@@ -1,6 +1,7 @@
 from typing import Type
 
-from __lib__.flask_fullstack import ResourceController, UserRole
+from common import ResourceController, UserRole
+from .permissions import permission_index, PermissionInt
 
 
 class MUBController(ResourceController):
@@ -16,3 +17,12 @@ class MUBController(ResourceController):
                        optional: bool = False, check_only: bool = False, use_session: bool = True):
         return super().jwt_authorizer(role, auth_name, result_field_name=result_field_name,
                                       optional=optional, check_only=check_only, use_session=use_session)
+
+    def require_permission(self, permission: PermissionInt, use_session: bool = True,
+                           use_moderator: bool = True, optional: bool = False):
+        return permission_index.require_permission(self, permission, use_session, use_moderator, optional)
+
+    def require_permissions(self, *permissions: PermissionInt, use_session: bool = True,
+                            use_moderator: bool = True, optional: bool = False):
+        return permission_index.require_permissions(self, *permissions, use_session=use_session,
+                                                    use_moderator=use_moderator, optional=optional)
