@@ -41,8 +41,9 @@ class Moderator(Base, Identifiable, UserRole):
 
         @classmethod
         def callback_convert(cls, callback, orm_object: Moderator, session=None, **context) -> None:
-            callback(permissions=[Section.FullModel.convert(section, permissions=ModPerm.find_by_mod_and_section(
-                session, orm_object.id, section.id)) for section in Section.get_all(session)])
+            callback(sections=[Section.FullModel.convert(
+                section, permissions=orm_object.get_section_permissions(session, section))
+                for section in Section.get_all(session)])
 
     @PydanticModel.include_context("session")
     class PermissionsModel(PydanticModel.column_model(id)):
@@ -53,8 +54,10 @@ class Moderator(Base, Identifiable, UserRole):
             callback(permissions=[Permission.IndexModel.convert(permission)
                                   for permission in orm_object.get_permissions(session)])
 
+    ModeModel = PydanticModel.column_model(mode)
     IndexModel = PermissionsModel.column_model(username, superuser)
-    SelfModel = SectionModel.column_model(mode)
+    SelfPermissionModel = ModeModel.combine_with(PermissionsModel)
+    SelfModel = ModeModel.combine_with(SectionModel)
 
     @classmethod
     def register(cls, session, username: str, password: str):
@@ -86,6 +89,11 @@ class Moderator(Base, Identifiable, UserRole):
         if self.superuser:
             return Permission.get_all(session)
         return session.get_all(select(Permission).join(ModPerm).filter(ModPerm.moderator_id == self.id))
+
+    def get_section_permissions(self, session, section: Section) -> list[Permission]:
+        if self.superuser:
+            return section.permissions
+        return ModPerm.find_by_mod_and_section(session, self.id, section.id)
 
     def check_permissions(self, session, permission_ids: list[int]) -> bool:
         stmt = select(count(ModPerm)).filter_by(moderator_id=self.id).filter(ModPerm.permission_id.in_(permission_ids))
@@ -130,4 +138,5 @@ class ModPerm(Base):
 
     @classmethod
     def find_by_mod_and_section(cls, session, moderator_id: int, section_id: int) -> list[Permission]:
-        return session.get_all(select(Permission).join(cls).filter_by(moderator_id=moderator_id, section_id=section_id))
+        stmt = select(Permission).filter_by(section_id=section_id).join(cls).filter_by(moderator_id=moderator_id)
+        return session.get_all(stmt)
