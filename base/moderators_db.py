@@ -7,32 +7,7 @@ from sqlalchemy.sql.functions import count
 from sqlalchemy.sql.sqltypes import Integer, String, Boolean, Enum
 
 from common import Base, PydanticModel, Identifiable, UserRole, TypeEnum
-
-
-class Permission(Base):
-    __tablename__ = "mub-permissions"
-
-    id = Column(Integer, primary_key=True)
-    name = Column(String(100), nullable=False, unique=True)
-
-    IndexModel = PydanticModel.column_model(id, name)
-
-    @classmethod
-    def find_by_id(cls, session, entity_id: int) -> Permission | None:
-        return session.get_first(select(cls).filter_by(id=entity_id))
-
-    @classmethod
-    def find_by_name(cls, session, name: str) -> Permission | None:
-        return session.get_first(select(cls).filter_by(name=name))
-
-    @classmethod
-    def search(cls, session, offset: int, limit: int, search: str | None = None) -> list[Permission]:
-        stmt = select(cls) if search is None else select(cls).filter(cls.name.like(f"%{search}%"))
-        return session.get_paginated(stmt.order_by(cls.name), offset, limit)
-
-    @classmethod
-    def get_all(cls, session):
-        return session.get_all(select(cls))
+from .permissions_db import Permission
 
 
 class InterfaceMode(TypeEnum):
@@ -89,7 +64,8 @@ class Moderator(Base, Identifiable, UserRole):
         return session.get_first(select(cls).filter_by(username=username))
 
     @classmethod
-    def search(cls, session, offset: int, limit: int, search: str | None = None, exclude: int = None) -> list[Moderator]:
+    def search(cls, session, offset: int, limit: int, search: str | None = None,
+               exclude: int = None) -> list[Moderator]:
         stmt = select(cls)
         if exclude is not None:
             stmt = stmt.filter(cls.id != exclude)

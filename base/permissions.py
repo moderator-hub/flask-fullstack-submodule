@@ -2,7 +2,8 @@ from dataclasses import dataclass
 from functools import wraps
 
 from common import sessionmaker, ResourceController, get_or_pop
-from .moderators_db import Permission, Moderator, ModPerm
+from .moderators_db import Moderator, ModPerm
+from .permissions_db import Permission
 
 
 @dataclass
