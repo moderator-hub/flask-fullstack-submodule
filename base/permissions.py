@@ -29,6 +29,8 @@ class PermissionIndex:
     def add_section(self, name: str) -> SectionInt:
         if self.initialized:
             raise RuntimeError("Dynamically adding sections after initialization is not supported")
+        if name in self.sections:
+            raise KeyError(f"Section {name} is already created")
         self.sections[name] = set()
         return SectionInt(name)
 
@@ -37,8 +39,10 @@ class PermissionIndex:
             raise RuntimeError("Dynamically adding permissions after initialization is not supported")
         if section not in self.sections:
             raise KeyError(f"Section {section} is not created")
+        if name in self.sections[section]:
+            raise KeyError(f"Permission {section} is already created")
         self.sections[section].add(name)
-        return PermissionInt(name)
+        return PermissionInt(section + " " + name)
 
     @sessionmaker.with_begin
     def initialize(self, session):
@@ -51,7 +55,7 @@ class PermissionIndex:
 
             for permission_name in permissions:
                 permission = Permission.find_by_name_or_create(session, permission_name, section_id=section.id)
-                self.permission_dict[permission_name] = permission.id
+                self.permission_dict[section_name + " " + permission_name] = permission.id
 
         self.initialized = True
         # TODO check if database has more permissions, than self does

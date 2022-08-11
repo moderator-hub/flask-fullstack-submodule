@@ -15,7 +15,7 @@ class LocalBase(Base, Identifiable):
     __abstract__ = True
 
     id = Column(Integer, primary_key=True)
-    name = Column(String(100), nullable=False, unique=True, index=True)
+    name = Column(String(100), nullable=False)
 
     IndexModel = PydanticModel.column_model(id=id, name=name)
 
