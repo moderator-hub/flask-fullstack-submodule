@@ -28,6 +28,13 @@ class LocalBase(Base, Identifiable):
         return session.get_first(select(cls).filter_by(name=name))
 
     @classmethod
+    def find_by_name_or_create(cls: Type[t], session, name: str, **kwargs) -> t:
+        result: cls = cls.find_by_name(session, name)
+        if result is None:
+            result = cls.create(session, name=name, **kwargs)
+        return result
+
+    @classmethod
     def search(cls: Type[t], session, offset: int, limit: int, search: str | None = None) -> list[t]:
         stmt = select(cls) if search is None else select(cls).filter(cls.name.like(f"%{search}%"))
         return session.get_paginated(stmt.order_by(cls.name), offset, limit)
