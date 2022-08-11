@@ -29,7 +29,7 @@ class Moderator(Base, Identifiable, UserRole):
     id = Column(Integer, primary_key=True)
     username = Column(String(100), nullable=False, unique=True)
     password = Column(String(100), nullable=False)
-    superuser = Column(Boolean, nullable=False, default=False)
+    super = Column(Boolean, nullable=False, default=False)
 
     mode = Column(Enum(InterfaceMode), nullable=False, default=InterfaceMode.DARK)
 
@@ -55,7 +55,7 @@ class Moderator(Base, Identifiable, UserRole):
                                   for permission in orm_object.get_permissions(session)])
 
     ModeModel = PydanticModel.column_model(mode)
-    IndexModel = PermissionsModel.column_model(username, superuser)
+    IndexModel = PermissionsModel.column_model(username, super)
     SelfPermissionModel = ModeModel.combine_with(PermissionsModel)
     SelfModel = ModeModel.combine_with(SectionModel)
 
@@ -86,12 +86,12 @@ class Moderator(Base, Identifiable, UserRole):
         return session.get_paginated(stmt.order_by(cls.username), offset, limit)
 
     def get_permissions(self, session) -> list[Permission]:
-        if self.superuser:
+        if self.super:
             return Permission.get_all(session)
         return session.get_all(select(Permission).join(ModPerm).filter(ModPerm.moderator_id == self.id))
 
     def get_section_permissions(self, session, section: Section) -> list[Permission]:
-        if self.superuser:
+        if self.super:
             return section.permissions
         return ModPerm.find_by_mod_and_section(session, self.id, section.id)
 

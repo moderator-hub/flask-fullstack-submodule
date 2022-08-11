@@ -6,10 +6,10 @@ from flask_restx.reqparse import RequestParser
 from common import counter_parser, sessionmaker
 from ..base import permission_index, Moderator, Section, Permission, ModPerm, MUBController
 
-superuser_section = permission_index.add_section("superuser")
-manage_mods = permission_index.add_permission(superuser_section, "manage mods")
+super_section = permission_index.add_section("super")
+manage_mods = permission_index.add_permission(super_section, "manage mods")
 
-controller = MUBController("superuser", sessionmaker=sessionmaker, path="")
+controller = MUBController("super", sessionmaker=sessionmaker, path="")
 
 search_counter_parser = counter_parser.copy()
 search_counter_parser.add_argument("search", required=False)
@@ -53,7 +53,7 @@ class ModeratorIndex(Resource):
         for permission_id in append_perms:
             if Permission.find_by_id(session, permission_id) is None:
                 controller.abort(404, f"Permission {permission_id} does not exit")
-            if not moderator.superuser and ModPerm.find_by_ids(session, moderator.id, permission_id) is None:
+            if not moderator.super and ModPerm.find_by_ids(session, moderator.id, permission_id) is None:
                 controller.abort(403, f"You can't grant or remove permission #{permission_id}")
 
         if Moderator.find_by_name(session, username) is not None:
@@ -73,7 +73,7 @@ class ModeratorManager(Resource):
     parser.add_argument("remove-perms", type=int, required=False, dest="remove_perms", action="append")
 
     @controller.doc_abort(400, "Target is the source")
-    @controller.doc_abort(400, "Can't edit superuser's permissions")
+    @controller.doc_abort(400, "Can't edit super's permissions")
     @controller.doc_abort(403, "Insufficient permissions")
     @controller.doc_abort(404, "Permission not found")
     @permission_index.require_permission(controller, manage_mods)
@@ -83,8 +83,8 @@ class ModeratorManager(Resource):
              append_perms: list[int] | None, remove_perms: list[int] | None):  # TODO replace mode?
         if moderator.id == target.id:
             controller.abort(400, "Target is the source")
-        if target.superuser:
-            controller.abort(400, "Can't edit superuser's permissions")
+        if target.super:
+            controller.abort(400, "Can't edit super's permissions")
 
         if username is not None:
             target.username = username
@@ -98,7 +98,7 @@ class ModeratorManager(Resource):
         for permission_id in (append_perms + remove_perms):
             if Permission.find_by_id(session, permission_id) is None:
                 controller.abort(404, f"Permission {permission_id} does not exit")
-            if not moderator.superuser and ModPerm.find_by_ids(session, moderator.id, permission_id) is None:
+            if not moderator.super and ModPerm.find_by_ids(session, moderator.id, permission_id) is None:
                 controller.abort(403, f"You can't grant or remove permission #{permission_id}")
 
         for permission_id in append_perms:
@@ -106,12 +106,12 @@ class ModeratorManager(Resource):
         ModPerm.bundle_delete(session, target.id, remove_perms)
 
     @controller.doc_abort(400, "Target is the source")
-    @controller.doc_abort(403, "Can't delete a superuser via web api")
+    @controller.doc_abort(403, "Can't delete a super via web api")
     @permission_index.require_permission(controller, manage_mods)
     @controller.database_searcher(Moderator, result_field_name="target", use_session=True)
     def delete(self, session, moderator: Moderator, target: Moderator):
         if moderator.id == target.id:
             controller.abort(400, "Target is the source")
-        if target.superuser:
-            controller.abort(403, "Can't delete a superuser via web api")
+        if target.super:
+            controller.abort(403, "Can't delete a super via web api")
         target.delete(session)

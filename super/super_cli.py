@@ -49,31 +49,32 @@ def create_moderator(session, username: str, password: str):
 @permission_cli_command()
 @option("-u", "--username", prompt=True)
 @option("-p", "--password", prompt=True, hide_input=True, confirmation_prompt=True)
-def create_superuser(session, username: str, password: str):
+def create_super(session, username: str, password: str):
     if Moderator.find_by_name(session, username) is not None:
         echo("ERROR: Moderator with this name already exists\n"
-             f"Use activate-superuser -u {username} to upgrade them to a superuser")
+             f"Hint: to upgrade a moderator to SUPER use:\n"
+             f"activate-super -u {username}")
 
     moderator = Moderator.register(session, username, password)
-    moderator.superuser = True
+    moderator.super = True
 
 
 @permission_cli_command()
 @option("-u", "--username", prompt=True)
-def activate_superuser(session, username: str):
+def activate_super(session, username: str):
     moderator: Moderator = Moderator.find_by_name(session, username)
     if moderator is None:
         return echo("ERROR: Moderator does not exist")
-    moderator.superuser = True
+    moderator.super = True
 
 
 @permission_cli_command()
 @option("-u", "--username", prompt=True)
-def deactivate_superuser(session, username: str):
+def deactivate_super(session, username: str):
     moderator: Moderator = Moderator.find_by_name(session, username)
     if moderator is None:
         return echo("ERROR: Moderator does not exist")
-    moderator.superuser = False
+    moderator.super = False
 
 
 @permission_cli_command()
@@ -94,7 +95,7 @@ def list_moderators(session, page: int):
         return echo("<empty>")
 
     for moderator in moderators:
-        echo(f"{moderator.id:4}: {moderator.username}" + (" SUPERUSER" if moderator.superuser else ""))
+        echo(f"{moderator.id:4}: {moderator.username}" + (" SUPER" if moderator.super else ""))
 
 
 @permission_cli_command()
@@ -107,7 +108,7 @@ def add_permission(session, username: str, permission: str):
         return echo("ERROR: Permission does not exist")
     if moderator is None:
         return echo("ERROR: Moderator does not exist")
-    if moderator.superuser or ModPerm.create_unique(session, moderator.id, perm.id) is None:
+    if moderator.super or ModPerm.create_unique(session, moderator.id, perm.id) is None:
         echo("WARNING: Permission already granted")
 
 
@@ -121,8 +122,8 @@ def remove_permission(session, username: str, permission: str):
         return echo("ERROR: Permission does not exist")
     if moderator is None:
         return echo("ERROR: Moderator does not exist")
-    if moderator.superuser:
-        echo("ERROR: Moderator is a superuser")
+    if moderator.super:
+        echo("ERROR: Moderator is SUPER")
     if not ModPerm.delete_by_ids(session, moderator.id, perm.id):
         echo("WARNING: Permission is not granted")
 
