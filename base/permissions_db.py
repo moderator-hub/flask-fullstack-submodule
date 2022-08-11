@@ -67,3 +67,10 @@ class Section(LocalBase):
         @classmethod
         def callback_convert(cls, callback, orm_object: Section, permissions=None, **context) -> None:
             callback(permissions=[Permission.IndexModel.convert(perm, **context) for perm in permissions])
+
+    class SelfModel(LocalBase.IndexModel):
+        permissions: list[Permission.IndexModel]
+
+        @classmethod
+        def callback_convert(cls, callback, orm_object: Section, **context) -> None:
+            callback(permissions=[Permission.IndexModel.convert(perm, **context) for perm in orm_object.permissions])

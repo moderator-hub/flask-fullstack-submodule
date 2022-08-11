@@ -4,14 +4,23 @@ from flask_restx import Resource
 from flask_restx.reqparse import RequestParser
 
 from common import counter_parser, sessionmaker
-from ..base import permission_index, Moderator, Permission, ModPerm, MUBController
+from ..base import permission_index, Moderator, Section, Permission, ModPerm, MUBController
 
-manage_mods = permission_index.add_permission("manage mods")
+superuser_section = permission_index.add_section("superuser")
+manage_mods = permission_index.add_permission(superuser_section, "manage mods")
 
 controller = MUBController("superuser", sessionmaker=sessionmaker, path="")
 
 search_counter_parser = counter_parser.copy()
 search_counter_parser.add_argument("search", required=False)
+
+
+@controller.route("/sections/")
+class SectionIndex(Resource):
+    @permission_index.require_permission(controller, manage_mods, use_moderator=False)
+    @controller.marshal_list_with(Section.SelfModel)
+    def get(self, session):
+        return Section.get_all(session)
 
 
 @controller.route("/permissions/")
