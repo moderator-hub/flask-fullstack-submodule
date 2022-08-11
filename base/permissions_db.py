@@ -49,13 +49,14 @@ class Permission(LocalBase):
 
 
 class Section(LocalBase):
-    __tablename__ = "mub-section"
+    __tablename__ = "mub-sections"
 
-    permissions = relationship("Permission", back_populates="section")
+    permissions = relationship("Permission", back_populates="section", cascade="all, delete")
 
+    @PydanticModel.include_context(permissions=list)
     class FullModel(LocalBase.IndexModel):
         permissions: list[Permission.IndexModel]
 
         @classmethod
-        def callback_convert(cls, callback, orm_object: Section, **context) -> None:
-            callback(permissions=[Permission.IndexModel.convert(perm, **context) for perm in orm_object.permissions])
+        def callback_convert(cls, callback, orm_object: Section, permissions=None, **context) -> None:
+            callback(permissions=[Permission.IndexModel.convert(perm, **context) for perm in permissions])

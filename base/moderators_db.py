@@ -7,7 +7,7 @@ from sqlalchemy.sql.functions import count
 from sqlalchemy.sql.sqltypes import Integer, String, Boolean, Enum
 
 from common import Base, PydanticModel, Identifiable, UserRole, TypeEnum
-from .permissions_db import Permission
+from .permissions_db import Permission, Section
 
 
 class InterfaceMode(TypeEnum):
@@ -36,6 +36,15 @@ class Moderator(Base, Identifiable, UserRole):
     permissions = relationship("ModPerm", cascade="all, delete")
 
     @PydanticModel.include_context("session")
+    class SectionModel(PydanticModel.column_model(id)):
+        sections: list[Section.FullModel]
+
+        @classmethod
+        def callback_convert(cls, callback, orm_object: Moderator, session=None, **context) -> None:
+            callback(permissions=[Section.FullModel.convert(section, permissions=ModPerm.find_by_mod_and_section(
+                session, orm_object.id, section.id)) for section in Section.get_all(session)])
+
+    @PydanticModel.include_context("session")
     class PermissionsModel(PydanticModel.column_model(id)):
         permissions: list[Permission.IndexModel]
 
@@ -45,7 +54,7 @@ class Moderator(Base, Identifiable, UserRole):
                                   for permission in orm_object.get_permissions(session)])
 
     IndexModel = PermissionsModel.column_model(username, superuser)
-    SelfModel = PermissionsModel.column_model(mode)
+    SelfModel = SectionModel.column_model(mode)
 
     @classmethod
     def register(cls, session, username: str, password: str):
@@ -101,10 +110,6 @@ class ModPerm(Base):
     permission = relationship("Permission", foreign_keys=[permission_id])
 
     @classmethod
-    def find_by_moderator(cls, session, moderator_id: int, offset: int, limit: int) -> list[ModPerm]:
-        return session.get_paginated(select(cls).filter_by(moderator_id=moderator_id), offset, limit)
-
-    @classmethod
     def find_by_ids(cls, session, moderator_id: int, permission_id: int) -> ModPerm | None:
         return session.get_first(select(cls).filter_by(moderator_id=moderator_id, permission_id=permission_id))
 
@@ -122,3 +127,7 @@ class ModPerm(Base):
     @classmethod
     def bundle_delete(cls, session, moderator_id: int, permission_ids: list[int]) -> None:
         session.execute(delete(cls).where(cls.moderator_id == moderator_id, cls.permission_id.in_(permission_ids)))
+
+    @classmethod
+    def find_by_mod_and_section(cls, session, moderator_id: int, section_id: int) -> list[Permission]:
+        return session.get_all(select(Permission).join(cls).filter_by(moderator_id=moderator_id, section_id=section_id))
