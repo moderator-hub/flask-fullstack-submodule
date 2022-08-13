@@ -54,10 +54,10 @@ class Moderator(Base, Identifiable, UserRole):
             callback(permissions=[Permission.IndexModel.convert(permission)
                                   for permission in orm_object.get_permissions(session)])
 
-    ModeModel = PydanticModel.column_model(mode)
+    BaseModel = PydanticModel.column_model(mode, username)
     IndexModel = PermissionsModel.column_model(username, super)
-    SelfPermissionModel = ModeModel.combine_with(PermissionsModel)
-    SelfModel = ModeModel.combine_with(SectionModel)
+    SelfPermissionModel = BaseModel.combine_with(PermissionsModel)
+    SelfModel = BaseModel.combine_with(SectionModel)
 
     @classmethod
     def register(cls, session, username: str, password: str):
