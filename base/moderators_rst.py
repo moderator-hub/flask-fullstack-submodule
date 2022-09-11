@@ -4,11 +4,10 @@ from flask_jwt_extended import get_jwt
 from flask_restx import Resource
 from flask_restx.reqparse import RequestParser
 
-from common import sessionmaker
 from ._mub_restx import MUBController
 from .moderators_db import Moderator, BlockedModToken, InterfaceMode
 
-controller = MUBController("base", sessionmaker=sessionmaker, path="")
+controller = MUBController("base", path="")
 
 
 @controller.route("/sign-in/")
@@ -19,11 +18,10 @@ class SignInResource(Resource):
 
     @controller.doc_aborts(("200 ", "Moderator does not exist"), (" 200", "Wrong password"))
     @controller.with_optional_jwt()
-    @controller.with_begin
     @controller.argument_parser(parser)
     @controller.marshal_with_authorization(Moderator.SelfModel, auth_name="mub")
-    def post(self, session, username: str, password: str):
-        moderator = Moderator.find_by_name(session, username)
+    def post(self, username: str, password: str):
+        moderator = Moderator.find_by_name(username)
         if moderator is None:
             return "Moderator does not exist"
 
@@ -34,10 +32,9 @@ class SignInResource(Resource):
 
 @controller.route("/sign-out/")
 class SignOutResource(Resource):
-    @controller.with_begin
     @controller.removes_authorization(auth_name="mub")
-    def post(self, session):
-        BlockedModToken.create(session, jti=get_jwt()["jti"])
+    def post(self):
+        BlockedModToken.create(jti=get_jwt()["jti"])
         return True
 
 
@@ -52,7 +49,7 @@ class PermissionsResource(Resource):
     parser.add_argument("mode", required=False)
 
     @controller.doc_abort(400, "Wrong interface mode")
-    @controller.jwt_authorizer(Moderator, use_session=False)
+    @controller.jwt_authorizer(Moderator)
     @controller.argument_parser(parser)
     def post(self, moderator, mode: str | None):
         if mode is not None:

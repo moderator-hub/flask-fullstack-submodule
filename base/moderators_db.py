@@ -6,7 +6,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql.functions import count
 from sqlalchemy.sql.sqltypes import Integer, String, Boolean, Enum
 
-from common import Base, PydanticModel, Identifiable, UserRole, TypeEnum
+from common import db, Base, PydanticModel, Identifiable, UserRole, TypeEnum
 from .permissions_db import Permission, Section
 
 
@@ -35,24 +35,22 @@ class Moderator(Base, Identifiable, UserRole):
 
     permissions = relationship("ModPerm", cascade="all, delete")
 
-    @PydanticModel.include_context("session")
     class SectionModel(PydanticModel.column_model(id)):
         sections: list[Section.FullModel]
 
         @classmethod
-        def callback_convert(cls, callback, orm_object: Moderator, session=None, **context) -> None:
+        def callback_convert(cls, callback, orm_object: Moderator, **context) -> None:
             callback(sections=[Section.FullModel.convert(
-                section, permissions=orm_object.get_section_permissions(session, section))
-                for section in Section.get_all(session)])
+                section, permissions=orm_object.get_section_permissions(section))
+                for section in Section.get_all()])
 
-    @PydanticModel.include_context("session")
     class PermissionsModel(PydanticModel.column_model(id)):
         permissions: list[Permission.IndexModel]
 
         @classmethod
-        def callback_convert(cls, callback, orm_object: Moderator, session=None, **context) -> None:
+        def callback_convert(cls, callback, orm_object: Moderator, **context) -> None:
             callback(permissions=[Permission.IndexModel.convert(permission)
-                                  for permission in orm_object.get_permissions(session)])
+                                  for permission in orm_object.get_permissions()])
 
     BaseModel = PydanticModel.column_model(mode, username)
     IndexModel = PermissionsModel.column_model(username, super)
@@ -60,44 +58,44 @@ class Moderator(Base, Identifiable, UserRole):
     SelfModel = BaseModel.combine_with(SectionModel)
 
     @classmethod
-    def register(cls, session, username: str, password: str):
-        return Moderator.create(session, username=username, password=Moderator.generate_hash(password))
+    def register(cls, username: str, password: str):
+        return Moderator.create(username=username, password=Moderator.generate_hash(password))
 
     @classmethod
-    def find_by_id(cls, session, entry_id: int) -> Moderator | None:
-        return session.get_first(select(cls).filter_by(id=entry_id))
+    def find_by_id(cls, entry_id: int) -> Moderator | None:
+        return db.session.get_first(select(cls).filter_by(id=entry_id))
 
     @classmethod
-    def find_by_identity(cls, session, identity: int) -> Moderator | None:
-        return cls.find_by_id(session, identity)
+    def find_by_identity(cls, identity: int) -> Moderator | None:
+        return cls.find_by_id(identity)
 
     @classmethod
-    def find_by_name(cls, session, username: str):
-        return session.get_first(select(cls).filter_by(username=username))
+    def find_by_name(cls, username: str):
+        return db.session.get_first(select(cls).filter_by(username=username))
 
     @classmethod
-    def search(cls, session, offset: int, limit: int, search: str | None = None,
+    def search(cls, offset: int, limit: int, search: str | None = None,
                exclude: int = None) -> list[Moderator]:
         stmt = select(cls)
         if exclude is not None:
             stmt = stmt.filter(cls.id != exclude)
         if search is not None:
             stmt = stmt.filter(cls.username.like(f"%{search}%"))
-        return session.get_paginated(stmt.order_by(cls.username), offset, limit)
+        return db.session.get_paginated(stmt.order_by(cls.username), offset, limit)
 
-    def get_permissions(self, session) -> list[Permission]:
+    def get_permissions(self) -> list[Permission]:
         if self.super:
-            return Permission.get_all(session)
-        return session.get_all(select(Permission).join(ModPerm).filter(ModPerm.moderator_id == self.id))
+            return Permission.get_all()
+        return db.session.get_all(select(Permission).join(ModPerm).filter(ModPerm.moderator_id == self.id))
 
-    def get_section_permissions(self, session, section: Section) -> list[Permission]:
+    def get_section_permissions(self, section: Section) -> list[Permission]:
         if self.super:
             return section.permissions
-        return ModPerm.find_by_mod_and_section(session, self.id, section.id)
+        return ModPerm.find_by_mod_and_section(self.id, section.id)
 
-    def check_permissions(self, session, permission_ids: list[int]) -> bool:
+    def check_permissions(self, permission_ids: list[int]) -> bool:
         stmt = select(count(ModPerm)).filter_by(moderator_id=self.id).filter(ModPerm.permission_id.in_(permission_ids))
-        return session.get_first(stmt) == len(permission_ids)
+        return db.session.get_first(stmt) == len(permission_ids)
 
     def get_identity(self):
         return self.id
@@ -118,25 +116,25 @@ class ModPerm(Base):
     permission = relationship("Permission", foreign_keys=[permission_id])
 
     @classmethod
-    def find_by_ids(cls, session, moderator_id: int, permission_id: int) -> ModPerm | None:
-        return session.get_first(select(cls).filter_by(moderator_id=moderator_id, permission_id=permission_id))
+    def find_by_ids(cls, moderator_id: int, permission_id: int) -> ModPerm | None:
+        return db.session.get_first(select(cls).filter_by(moderator_id=moderator_id, permission_id=permission_id))
 
     @classmethod
-    def create_unique(cls, session, moderator_id: int, permission_id: int) -> ModPerm | None:
-        if cls.find_by_ids(session, moderator_id, permission_id) is not None:
+    def create_unique(cls, moderator_id: int, permission_id: int) -> ModPerm | None:
+        if cls.find_by_ids(moderator_id, permission_id) is not None:
             return None
-        return cls.create(session, moderator_id=moderator_id, permission_id=permission_id)
+        return cls.create(moderator_id=moderator_id, permission_id=permission_id)
 
     @classmethod
-    def delete_by_ids(cls, session, moderator_id: int, permission_id: int) -> bool:
-        mod_perm = cls.find_by_ids(session, moderator_id, permission_id)
-        return mod_perm is not None and mod_perm.delete(session) is None
+    def delete_by_ids(cls, moderator_id: int, permission_id: int) -> bool:
+        mod_perm = cls.find_by_ids(moderator_id, permission_id)
+        return mod_perm is not None and mod_perm.delete() is None
 
     @classmethod
-    def bundle_delete(cls, session, moderator_id: int, permission_ids: list[int]) -> None:
-        session.execute(delete(cls).where(cls.moderator_id == moderator_id, cls.permission_id.in_(permission_ids)))
+    def bundle_delete(cls, moderator_id: int, permission_ids: list[int]) -> None:
+        db.session.execute(delete(cls).where(cls.moderator_id == moderator_id, cls.permission_id.in_(permission_ids)))
 
     @classmethod
-    def find_by_mod_and_section(cls, session, moderator_id: int, section_id: int) -> list[Permission]:
+    def find_by_mod_and_section(cls, moderator_id: int, section_id: int) -> list[Permission]:
         stmt = select(Permission).filter_by(section_id=section_id).join(cls).filter_by(moderator_id=moderator_id)
-        return session.get_all(stmt)
+        return db.session.get_all(stmt)
