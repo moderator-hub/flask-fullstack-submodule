@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+from flask_fullstack import PydanticModel, Identifiable, UserRole, TypeEnum
 from passlib.handlers.pbkdf2 import pbkdf2_sha256
 from sqlalchemy import Column, ForeignKey, select, delete
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql.functions import count
 from sqlalchemy.sql.sqltypes import Integer, String, Boolean, Enum
 
-from common import db, Base, PydanticModel, Identifiable, UserRole, TypeEnum
+from common import db, Base
 from .permissions_db import Permission, Section
 
 

@@ -3,7 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import wraps
 
-from common import ResourceController, get_or_pop
+from flask_fullstack import get_or_pop
+
+from common import ResourceController
 from .moderators_db import Moderator, ModPerm
 from .permissions_db import Section, Permission
 

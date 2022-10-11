@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+from flask_fullstack import counter_parser
 from flask_restx import Resource
 from flask_restx.reqparse import RequestParser
 
-from common import counter_parser
 from ..base import permission_index, Moderator, Section, Permission, ModPerm, MUBController
 
 super_section = permission_index.add_section("super")

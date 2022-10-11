@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from typing import Type, TypeVar
 
+from flask_fullstack import PydanticModel, Identifiable
 from sqlalchemy import Column, ForeignKey, select
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql.sqltypes import Integer, String
 
-from common import Base, PydanticModel, Identifiable, db
+from common import Base, db
 
 t = TypeVar("t", bound="ModBase")
 

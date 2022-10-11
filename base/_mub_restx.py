@@ -1,6 +1,8 @@
 from typing import Type
 
-from common import ResourceController, UserRole
+from flask_fullstack import UserRole
+
+from common import ResourceController
 from .permissions import permission_index, PermissionInt
 
 
