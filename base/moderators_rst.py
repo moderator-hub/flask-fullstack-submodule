@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from flask_fullstack import RequestParser
 from flask_jwt_extended import get_jwt
 from flask_restx import Resource
-from flask_restx.reqparse import RequestParser
 
 from ._mub_restx import MUBController
 from .moderators_db import Moderator, BlockedModToken, InterfaceMode
