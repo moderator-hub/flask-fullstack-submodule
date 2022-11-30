@@ -3,6 +3,7 @@ from functools import wraps
 from click import option, echo
 from flask import Blueprint
 
+from common import db
 from ..base import Moderator, Permission, ModPerm, permission_index
 
 CLI_PAGE_SIZE: int = 20
@@ -17,6 +18,7 @@ def permission_cli_command():
         def permission_cli_command_inner(*args, **kwargs):
             if not permission_index.initialized:
                 return echo("FATAL: Permission index has not been initialized")
+            db.session.commit()
             return function(*args, **kwargs)
 
         return permission_cli_command_inner
