@@ -64,7 +64,7 @@ class Moderator(Base, Identifiable, UserRole):
 
     @classmethod
     def find_by_id(cls, entry_id: int) -> Moderator | None:
-        return db.session.get_first(select(cls).filter_by(id=entry_id))
+        return db.get_first(select(cls).filter_by(id=entry_id))
 
     @classmethod
     def find_by_identity(cls, identity: int) -> Moderator | None:
@@ -72,7 +72,7 @@ class Moderator(Base, Identifiable, UserRole):
 
     @classmethod
     def find_by_name(cls, username: str):
-        return db.session.get_first(select(cls).filter_by(username=username))
+        return db.get_first(select(cls).filter_by(username=username))
 
     @classmethod
     def search(cls, offset: int, limit: int, search: str | None = None,
@@ -82,12 +82,12 @@ class Moderator(Base, Identifiable, UserRole):
             stmt = stmt.filter(cls.id != exclude)
         if search is not None:
             stmt = stmt.filter(cls.username.like(f"%{search}%"))
-        return db.session.get_paginated(stmt.order_by(cls.username), offset, limit)
+        return db.get_paginated(stmt.order_by(cls.username), offset, limit)
 
     def get_permissions(self) -> list[Permission]:
         if self.super:
             return Permission.get_all()
-        return db.session.get_all(select(Permission).join(ModPerm).filter(ModPerm.moderator_id == self.id))
+        return db.get_all(select(Permission).join(ModPerm).filter(ModPerm.moderator_id == self.id))
 
     def get_section_permissions(self, section: Section) -> list[Permission]:
         if self.super:
@@ -96,7 +96,7 @@ class Moderator(Base, Identifiable, UserRole):
 
     def check_permissions(self, permission_ids: list[int]) -> bool:
         stmt = select(count(ModPerm)).filter_by(moderator_id=self.id).filter(ModPerm.permission_id.in_(permission_ids))
-        return db.session.get_first(stmt) == len(permission_ids)
+        return db.get_first(stmt) == len(permission_ids)
 
     def get_identity(self):
         return self.id
@@ -118,7 +118,7 @@ class ModPerm(Base):
 
     @classmethod
     def find_by_ids(cls, moderator_id: int, permission_id: int) -> ModPerm | None:
-        return db.session.get_first(select(cls).filter_by(moderator_id=moderator_id, permission_id=permission_id))
+        return db.get_first(select(cls).filter_by(moderator_id=moderator_id, permission_id=permission_id))
 
     @classmethod
     def create_unique(cls, moderator_id: int, permission_id: int) -> ModPerm | None:
@@ -138,4 +138,4 @@ class ModPerm(Base):
     @classmethod
     def find_by_mod_and_section(cls, moderator_id: int, section_id: int) -> list[Permission]:
         stmt = select(Permission).filter_by(section_id=section_id).join(cls).filter_by(moderator_id=moderator_id)
-        return db.session.get_all(stmt)
+        return db.get_all(stmt)

@@ -22,11 +22,11 @@ class LocalBase(Base, Identifiable):
 
     @classmethod
     def find_by_id(cls: Type[t], entity_id: int) -> t | None:
-        return db.session.get_first(select(cls).filter_by(id=entity_id))
+        return db.get_first(select(cls).filter_by(id=entity_id))
 
     @classmethod
     def find_by_name(cls: Type[t], name: str) -> t | None:
-        return db.session.get_first(select(cls).filter_by(name=name))
+        return db.get_first(select(cls).filter_by(name=name))
 
     @classmethod
     def find_by_name_or_create(cls: Type[t], name: str, **kwargs) -> t:
@@ -38,11 +38,11 @@ class LocalBase(Base, Identifiable):
     @classmethod
     def search(cls: Type[t], offset: int, limit: int, search: str | None = None) -> list[t]:
         stmt = select(cls) if search is None else select(cls).filter(cls.name.like(f"%{search}%"))
-        return db.session.get_paginated(stmt.order_by(cls.name), offset, limit)
+        return db.get_paginated(stmt.order_by(cls.name), offset, limit)
 
     @classmethod
     def get_all(cls: Type[t]) -> list[t]:
-        return db.session.get_all(select(cls))
+        return db.get_all(select(cls))
 
 
 class Permission(LocalBase):
@@ -53,7 +53,7 @@ class Permission(LocalBase):
 
     @classmethod
     def find_by_section(cls, section_id: int) -> list[Permission]:
-        return db.session.get_first(select(cls).filter_by(section_id=section_id))
+        return db.get_first(select(cls).filter_by(section_id=section_id))
 
 
 class Section(LocalBase):
